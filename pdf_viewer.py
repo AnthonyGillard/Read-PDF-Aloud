@@ -1,10 +1,19 @@
 import ctypes
 import tkinter
+import pyttsx3
 from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog as fd
 import os
 from miner import PDFMiner
+import multiprocessing
+import keyboard
+
+
+def read_text(text):
+    engine = pyttsx3.init()
+    engine.say(text)
+    engine.runAndWait()
 
 
 class PDFViewer:
@@ -115,13 +124,13 @@ class PDFViewer:
 
     def _create_text_reading_options_panel(self):
         self.reading_options_panel = ttk.Frame(self.application, width=self.pdf_navigation_width,
-                                               height=self.pdf_navigation_height)
+                                        height=self.pdf_navigation_height)
         self.reading_options_panel.grid(row=1, column=1)
         self.reading_options_panel.grid_propagate(False)
 
         self.speaker = PhotoImage(file='images\\speaker.png')
         self.speaker = self.speaker.subsample(20, 20)
-        self.speaker_button = ttk.Button(self.reading_options_panel, image=self.speaker)
+        self.speaker_button = ttk.Button(self.reading_options_panel, image=self.speaker, command=self.read_all_text)
         self.speaker_button.grid(row=0, column=1, padx=((self.pdf_navigation_width / 2) - self.up_arrow.width(), 5),
                                  pady=8)
 
@@ -129,6 +138,8 @@ class PDFViewer:
         self.application.bind('<o>', self.open_file)
         self.application.bind('<w>', self.previous_page)
         self.application.bind('<s>', self.next_page)
+        self.application.bind('<r>', self.read_all_text)
+        self.application.bind('<Control-r>', self.read_selected_text)
 
     def open_file(self, event=None):
         self.pdf_file_path = fd.askopenfilename(title='Select a PDF file', initialdir=os.getcwd(),
@@ -182,6 +193,27 @@ class PDFViewer:
             if self.current_page > 0:
                 self.current_page -= 1
                 self.update_display()
+
+    def read_all_text(self, event=None):
+        self._run_read_aloud_process(self.text)
+
+    def read_selected_text(self, event=None):
+        sel_start, sel_end = self.text_box.tag_ranges("sel")
+
+        if sel_start and sel_end:
+            text = self.text_box.get(sel_start, sel_end)
+            self._run_read_aloud_process(text)
+
+    @staticmethod
+    def _run_read_aloud_process(text):
+        p = multiprocessing.Process(target=read_text, args=(text,))
+        p.start()
+        while p.is_alive():
+            if keyboard.is_pressed('escape'):
+                p.terminate()
+            else:
+                continue
+        p.join()
 
 
 if __name__ == '__main__':
