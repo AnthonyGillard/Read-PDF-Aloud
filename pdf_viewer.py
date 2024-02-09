@@ -2,6 +2,9 @@ import ctypes
 import tkinter
 from tkinter import *
 from tkinter import ttk
+from tkinter import filedialog as fd
+import os
+from miner import PDFMiner
 
 
 class PDFViewer:
@@ -48,6 +51,7 @@ class PDFViewer:
         self._create_pdf_navigation_frame()
         self._create_text_view()
         self._create_text_reading_options_panel()
+        self._create_keyboard_shortcuts()
 
     def _size_window_and_load_icon(self):
         self.application.title('PDF Viewer')
@@ -60,6 +64,7 @@ class PDFViewer:
         self.application.config(menu=self.menu)
         self.file_tab = Menu(self.menu)
         self.menu.add_cascade(label="File", menu=self.file_tab)
+        self.file_tab.add_command(label="Open File", accelerator='o', command=self.open_file)
         self.file_tab.add_command(label="Exit", command=self.application.destroy)
 
     def _create_pdf_view(self):
@@ -87,12 +92,12 @@ class PDFViewer:
 
         self.up_arrow_icon = PhotoImage(file='images\\up_arrow.png')
         self.up_arrow = self.up_arrow_icon.subsample(20, 20)
-        self.up_button = ttk.Button(self.pdf_navigation, image=self.up_arrow)
+        self.up_button = ttk.Button(self.pdf_navigation, image=self.up_arrow, command=self.previous_page)
         self.up_button.grid(row=0, column=1, padx=((self.pdf_navigation_width / 2) - self.up_arrow.width(), 5), pady=8)
 
         self.down_arrow_icon = PhotoImage(file='images\\down_arrow.png')
         self.down_arrow = self.down_arrow_icon.subsample(20, 20)
-        self.down_button = ttk.Button(self.pdf_navigation, image=self.down_arrow)
+        self.down_button = ttk.Button(self.pdf_navigation, image=self.down_arrow, command=self.next_page)
         self.down_button.grid(row=0, column=3, pady=8)
 
         self.page_label = ttk.Label(self.pdf_navigation, text='page')
@@ -113,6 +118,70 @@ class PDFViewer:
                                                height=self.pdf_navigation_height)
         self.reading_options_panel.grid(row=1, column=1)
         self.reading_options_panel.grid_propagate(False)
+
+        self.speaker = PhotoImage(file='images\\speaker.png')
+        self.speaker = self.speaker.subsample(20, 20)
+        self.speaker_button = ttk.Button(self.reading_options_panel, image=self.speaker)
+        self.speaker_button.grid(row=0, column=1, padx=((self.pdf_navigation_width / 2) - self.up_arrow.width(), 5),
+                                 pady=8)
+
+    def _create_keyboard_shortcuts(self):
+        self.application.bind('<o>', self.open_file)
+        self.application.bind('<w>', self.previous_page)
+        self.application.bind('<s>', self.next_page)
+
+    def open_file(self, event=None):
+        self.pdf_file_path = fd.askopenfilename(title='Select a PDF file', initialdir=os.getcwd(),
+                                                filetypes=(('PDF', '*.pdf'), ))
+        file_name = os.path.basename(self.pdf_file_path)
+
+        self.miner = PDFMiner(self.pdf_file_path,
+                              self.pdf_view_height - self.MENU_BAR_HEIGHT - (self.AESTHETIC_PADDING * 2))
+        meta_data, no_pages = self.miner.get_metadata()
+
+        self.current_page = 0
+        self._store_meta_data(meta_data, no_pages, file_name)
+
+        self.update_display()
+
+    def _store_meta_data(self, meta_data, no_pages, file_name):
+        self.name = meta_data.get('title', file_name[:-4])
+        self.author = meta_data.get('author', None)
+        self.no_pages = no_pages
+        self.file_is_open = True
+        self.application.title(self.name)
+
+    def update_display(self):
+        if 0 <= self.current_page < self.no_pages:
+            self._display_page()
+            self._display_text()
+
+    def _display_page(self):
+        self.page_image = self.miner.get_page(self.current_page)
+        self.canvas.create_image((self.application_width / 2 - self.PAGE_WIDTH) / 2,
+                                 self.AESTHETIC_PADDING, anchor='nw', image=self.page_image)
+        self.current_page_starting_from_one = self.current_page + 1
+        self.page_label['text'] = str(self.current_page_starting_from_one) + ' of ' + str(self.no_pages)
+
+        region = self.canvas.bbox(ALL)
+        self.canvas.configure(scrollregion=region)
+
+    def _display_text(self):
+        self.text = self.miner.get_text(self.current_page)
+        self.text_box.delete(1.0, END)
+        self.text_box.insert(tkinter.END, self.text)
+
+    def next_page(self, event=None):
+        if self.file_is_open:
+            if self.current_page <= self.no_pages - 1:
+                self.current_page += 1
+                self.update_display()
+
+    def previous_page(self, event=None):
+        if self.file_is_open:
+            if self.current_page > 0:
+                self.current_page -= 1
+                self.update_display()
 
 
 if __name__ == '__main__':
