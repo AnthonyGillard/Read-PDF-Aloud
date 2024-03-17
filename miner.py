@@ -26,7 +26,7 @@ class PDFMiner:
         pix = page.get_pixmap(matrix=mat)
         px1 = fitz.Pixmap(pix, 0) if pix.alpha else pix
         imgdata = px1.tobytes("ppm")
-        return PhotoImage(data=imgdata)
+        return PhotoImage(data=imgdata), px1.width
 
     def get_text(self, page_num):
         page = self.pdf_reader.pages[page_num]
