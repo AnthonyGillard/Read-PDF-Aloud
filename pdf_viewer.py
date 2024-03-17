@@ -20,7 +20,10 @@ class PDFViewer:
     SCROLL_BAR_WIDTH = 16
     MENU_BAR_HEIGHT = 16
     AESTHETIC_PADDING = 16
-    PAGE_WIDTH = 655
+    GUI_X_POSITION = 20
+    GUI_Y_POSITION = 20
+    GUI_WIDTH = 1850
+    GUI_HEIGHT = 925
 
     def __init__(self, application):
         self.pdf_file_path = None
@@ -40,11 +43,11 @@ class PDFViewer:
         self._create_gui()
 
     def _get_full_screen_width_and_height(self):
-        self.application_width = self.application.winfo_screenwidth()
-        self.application_height = self.application.winfo_screenheight() - 48
+        self.application_width = self.GUI_WIDTH
+        self.application_height = self.GUI_HEIGHT
 
         self.pdf_view_width = self.application_width / 2
-        self.pdf_view_height = self.application_height * 0.9
+        self.pdf_view_height = self.application_height * 0.94
 
         self.pdf_navigation_width = self.pdf_view_width
         self.pdf_navigation_height = self.application_height * 0.1
@@ -65,16 +68,24 @@ class PDFViewer:
     def _size_window_and_load_icon(self):
         self.application.title('PDF Viewer')
         self.application.resizable(width=0, height=0)
-        self.application.state('zoomed')
+        self.application.geometry(
+            f'{self.application_width}x{self.application_height}+{self.GUI_X_POSITION}+{self.GUI_Y_POSITION}')
         self.application.iconbitmap(self.application, 'images\\PDF Icon free.ico')
 
     def _create_menu_with_tabs(self):
         self.menu = Menu(self.application)
         self.application.config(menu=self.menu)
+
         self.file_tab = Menu(self.menu)
         self.menu.add_cascade(label="File", menu=self.file_tab)
         self.file_tab.add_command(label="Open File", accelerator='o', command=self.open_file)
         self.file_tab.add_command(label="Exit", command=self.application.destroy)
+
+        self.pdf_view_settings_tab = Menu(self.menu)
+
+        self.text_settings_tab = Menu(self.menu)
+        self.menu.add_cascade(label="Text Viewer Settings", menu=self.text_settings_tab)
+        self.text_settings_tab.add_command(label="font size")
 
     def _create_pdf_view(self):
         self.pdf_view = ttk.Frame(self.application, width=self.pdf_view_width, height=self.pdf_view_height)
@@ -116,7 +127,7 @@ class PDFViewer:
         self.text_view = ttk.Frame(width=(self.application_width/2)-(self.AESTHETIC_PADDING*2),
                                    height=self.pdf_view_height)
         self.text_view.propagate(False)
-        self.text_box = tkinter.Text(self.text_view, font=("Times New Roman", 10), bg='#d3d3d3', fg='black',
+        self.text_box = tkinter.Text(self.text_view, font=("Times New Roman", 8), bg='#d3d3d3', fg='black',
                                      wrap=tkinter.WORD)
         self.text_box.config(height=1000, width=100)
         self.text_box.pack(side=TOP)
@@ -168,8 +179,8 @@ class PDFViewer:
             self._display_text()
 
     def _display_page(self):
-        self.page_image = self.miner.get_page(self.current_page)
-        self.canvas.create_image((self.application_width / 2 - self.PAGE_WIDTH) / 2,
+        self.page_image, page_image_width = self.miner.get_page(self.current_page)
+        self.canvas.create_image((self.pdf_view_width - page_image_width) / 2,
                                  self.AESTHETIC_PADDING, anchor='nw', image=self.page_image)
         self.current_page_starting_from_one = self.current_page + 1
         self.page_label['text'] = str(self.current_page_starting_from_one) + ' of ' + str(self.no_pages)
@@ -195,13 +206,14 @@ class PDFViewer:
                 self.update_display()
 
     def read_all_text(self, event=None):
-        self._run_read_aloud_process(self.text)
+        self._run_read_aloud_process(self.text.replace('\n', ' '))
 
     def read_selected_text(self, event=None):
         sel_start, sel_end = self.text_box.tag_ranges("sel")
 
         if sel_start and sel_end:
             text = self.text_box.get(sel_start, sel_end)
+            text = text.replace('\n', ' ')
             self._run_read_aloud_process(text)
 
     @staticmethod
@@ -222,3 +234,5 @@ if __name__ == '__main__':
     root = Tk()
     app = PDFViewer(root)
     root.mainloop()
+
+
