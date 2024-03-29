@@ -20,6 +20,9 @@ class PDFMiner:
         no_pages = self.pdf.page_count
         return metadata, no_pages
 
+    def get_total_pages(self):
+        return self.pdf.page_count
+
     def get_page(self, page_num):
         page = self.pdf.load_page(page_num)
         mat = fitz.Matrix(self.zoom_x, self.zoom_y)
